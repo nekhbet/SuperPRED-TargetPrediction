@@ -1,0 +1,48 @@
+{
+    "name": "nekhbet/superpred-targetprediction",
+    "description": "An API for the Charité's Super-PRED (Target Prediction) service",
+    "keywords": [
+        "nekhbet",
+        "SuperPRED",
+        "Target Prediction",
+        "PHP",
+        "Sorin Trimbitas"
+    ],
+    "homepage": "https://github.com/nekhbet/SuperPRED-TargetPrediction",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Sorin Trimbitas",
+            "email": "trimbitassorin@hotmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.0",
+        "guzzlehttp/guzzle": "^7.8",
+        "ext-dom": "*",
+        "ext-libxml": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nekhbet\\SuperPREDTargetPrediction\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Nekhbet\\SuperPREDTargetPrediction\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
