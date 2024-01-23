@@ -2,6 +2,6 @@
 
 All notable changes to `superpred-targetprediction` will be documented in this file
 
-## 1.0.0 - 201X-XX-XX
+## 1.0.0 - 2024-01-18
 
 - initial release
