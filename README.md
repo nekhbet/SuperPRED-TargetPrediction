@@ -3,7 +3,7 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/nekhbet/superpred-targetprediction.svg?style=flat-square)](https://packagist.org/packages/nekhbet/superpred-targetprediction)
 [![Total Downloads](https://img.shields.io/packagist/dt/nekhbet/superpred-targetprediction.svg?style=flat-square)](https://packagist.org/packages/nekhbet/superpred-targetprediction)
 
-Lets you take (and filter) the predicted targets based on a SMILES code from Super-PRED website.
+Lets you take (and filter) the predicted targets based on a SMILES code from Super-PRED website (https://prediction.charite.de/subpages/target_prediction.php).
 
 ## Installation
 
