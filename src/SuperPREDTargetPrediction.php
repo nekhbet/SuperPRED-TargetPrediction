@@ -25,9 +25,12 @@ class SuperPREDTargetPrediction
     private string $userAgent = '';
     private string $SMILES_code = '';
 
-    public function __construct()
+    private int $requestTimeout;
+
+    public function __construct(int $requestTimeout = 20)
     {
-        $this->userAgent = $this->userAgentsPool[rand(0, count($this->userAgentsPool) - 1)];
+        $this->requestTimeout = $requestTimeout;
+        $this->userAgent      = $this->userAgentsPool[rand(0, count($this->userAgentsPool) - 1)];
     }
 
     public function setUserAgent(string $ua): SuperPREDTargetPrediction
@@ -131,7 +134,7 @@ class SuperPREDTargetPrediction
     private function doPostCall(string $url, array $post_data): ResponseInterface
     {
         $client = new Client([
-            'timeout' => 20,
+            'timeout' => $this->requestTimeout,
         ]);
 
         return $client->request('POST', $url, [
