@@ -26,6 +26,8 @@ class SuperPREDTargetPrediction
     private string $SMILES_code = '';
 
     private int $requestTimeout;
+    private array $raw_data = [];
+    private array $nicefied_data = [];
 
     public function __construct(int $requestTimeout = 20)
     {
@@ -51,23 +53,16 @@ class SuperPREDTargetPrediction
      * @throws GuzzleException
      * @throws SuperPREDTargetPredictionException
      */
-    public function getTargets(float $min_probability = 0, float $min_model_accuracy = 0): array
+    public function run(): void
     {
-        $rawData = $this->getRawTargets();
-        if ($min_probability > 0 || $min_model_accuracy > 0) {
-            $rawData = array_filter($rawData, function ($item) use ($min_probability, $min_model_accuracy) {
-                return ($item['probability'] >= $min_probability) && ($item['model_accuracy'] >= $min_model_accuracy);
-            });
-        }
-
-        return $rawData;
+        $this->scrapeData();
     }
 
     /**
      * @throws GuzzleException
      * @throws SuperPREDTargetPredictionException
      */
-    public function getRawTargets(): array
+    private function scrapeData(): void
     {
         if ( ! $this->SMILES_code) {
             throw new SuperPREDTargetPredictionException("SMILES Code not set!");
@@ -122,9 +117,8 @@ class SuperPREDTargetPrediction
         }
 
         // Extract all info
-        $raw_data = $this->extractRawData($contentStage2);
-
-        return $this->decorateRawData($raw_data);
+        $this->raw_data      = $this->extractRawData($contentStage2);
+        $this->nicefied_data = $this->decorateRawData($this->raw_data);
     }
 
 
@@ -163,20 +157,51 @@ class SuperPREDTargetPrediction
 
     private function extractRawData(string $contentStage2): array
     {
-        $ret = [];
+        $ret = [
+            'binders'     => [],
+            'targets'     => [],
+            'indications' => [],
+        ];
         $doc = new DOMDocument();
         libxml_use_internal_errors(true);
         $doc->loadHTML($contentStage2);
-
         $xpath = new DOMXPath($doc);
-        $rows  = $xpath->query('//div[@class="container"]//table[@id="targets"]/tbody/tr');
+
+        // Get binders
+        $rows = $xpath->query('//div[@class="container"]//table[@id="known"]/tbody/tr');
+        if ($rows->length > 0) {
+            foreach ($rows as $row) {
+                $cells   = $row->getElementsByTagName('td');
+                $rowData = [];
+                foreach ($cells as $key => $cell) {
+                    $rowData[] = $cell->nodeValue;
+                }
+                $ret['binders'][] = $rowData;
+            }
+        }
+
+        // Get indications
+        $rows = $xpath->query('//div[@class="container"]//table[@id="indications"]/tbody/tr');
+        if ($rows->length > 0) {
+            foreach ($rows as $row) {
+                $cells   = $row->getElementsByTagName('td');
+                $rowData = [];
+                foreach ($cells as $key => $cell) {
+                    $rowData[] = $cell->nodeValue;
+                }
+                $ret['indications'][] = $rowData;
+            }
+        }
+
+        // Get targets
+        $rows = $xpath->query('//div[@class="container"]//table[@id="targets"]/tbody/tr');
         foreach ($rows as $row) {
             $cells   = $row->getElementsByTagName('td');
             $rowData = [];
             foreach ($cells as $key => $cell) {
                 $rowData[] = $cell->nodeValue;
             }
-            $ret[] = $rowData;
+            $ret['targets'][] = $rowData;
         }
 
         return $ret;
@@ -184,10 +209,40 @@ class SuperPREDTargetPrediction
 
     private function decorateRawData(array $raw_data): array
     {
-        $cleaned = [];
-        if ($raw_data) {
-            foreach ($raw_data as $raw_row) {
-                $cleaned[] = [
+        $cleaned = [
+            'binders'     => [],
+            'indications' => [],
+            'targets'     => [],
+        ];
+        if ($raw_data['binders']) {
+            foreach ($raw_data['binders'] as $raw_row) {
+                $cleaned['binders'][] = [
+                    'target_name'  => trim($raw_row[0]),
+                    'id_chembl'    => trim($raw_row[1]),
+                    'id_uniprot'   => trim($raw_row[2]),
+                    'id_pdb'       => (trim($raw_row[3]) === 'Not Available') ? '' : trim($raw_row[3]),
+                    'id_tdd'       => (trim($raw_row[4]) === 'Not Available') ? '' : trim($raw_row[4]),
+                    'min_activity' => trim($raw_row[5]),
+                    'assay_type'   => trim($raw_row[6]),
+                ];
+            }
+        }
+
+        if ($raw_data['indications']) {
+            foreach ($raw_data['indications'] as $raw_row) {
+                $cleaned['indications'][] = [
+                    'target_name'    => trim($raw_row[0]),
+                    'id_chembl'      => trim($raw_row[1]),
+                    'indication'     => trim($raw_row[2]),
+                    'probability'    => floatval(trim(trim($raw_row[3]), '%')),
+                    'model_accuracy' => floatval(trim(trim($raw_row[4]), '%')),
+                ];
+            }
+        }
+
+        if ($raw_data['targets']) {
+            foreach ($raw_data['targets'] as $raw_row) {
+                $cleaned['targets'][] = [
                     'target_name'    => trim($raw_row[0]),
                     'id_chembl'      => trim($raw_row[1]),
                     'id_uniprot'     => trim($raw_row[2]),
@@ -200,6 +255,39 @@ class SuperPREDTargetPrediction
         }
 
         return $cleaned;
+    }
+
+    public function getBinders(): array
+    {
+        return $this->nicefied_data['binders'];
+    }
+
+    public function getIndications(float $min_probability = 0, float $min_model_accuracy = 0): array
+    {
+        $data = $this->nicefied_data['indications'];
+        if ($data) {
+            if ($min_probability > 0 || $min_model_accuracy > 0) {
+                $data = array_filter($data, function ($item) use ($min_probability, $min_model_accuracy) {
+                    return ($item['probability'] >= $min_probability) && ($item['model_accuracy'] >= $min_model_accuracy);
+                });
+            }
+        }
+
+        return $data;
+    }
+
+    public function getTargets(float $min_probability = 0, float $min_model_accuracy = 0): array
+    {
+        $data = $this->nicefied_data['targets'];
+        if ($data) {
+            if ($min_probability > 0 || $min_model_accuracy > 0) {
+                $data = array_filter($data, function ($item) use ($min_probability, $min_model_accuracy) {
+                    return ($item['probability'] >= $min_probability) && ($item['model_accuracy'] >= $min_model_accuracy);
+                });
+            }
+        }
+
+        return $data;
     }
 
 
